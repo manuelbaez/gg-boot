@@ -8,7 +8,6 @@
 
 #define SEC_TO_USEC(value) ((value)*1000 * 1000)
 CHAR16 *FileName = (CHAR16 *)L"vmlinuz";
-
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
 
@@ -34,7 +33,7 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     UINTN Index;
     EFI_HANDLE *SFS_Handles;
     EFI_BLOCK_IO_PROTOCOL *BlkIo;
-    CONST CHAR16 *FileName = L"vmlinuz";
+    CHAR16 *FileName = L"vmlinuz";
     EFI_DEVICE_PATH_PROTOCOL *FilePath;
     UINTN ExitDataSize;
     EFI_LOADED_IMAGE *LoadedImage;
@@ -93,19 +92,65 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
         }
         Print(L"Loaded the image with success\n");
         Print(L"Image start:\n");
-        Status = uefi_call_wrapper(BS->HandleProtocol, 3,
+        Status = uefi_call_wrapper(BS->OpenProtocol, 3,
                                    LinuxImageHandle,
                                    &gEfiLoadedImageProtocolGuid,
-                                   &LoadedImage);
+                                   &LoadedImage,
+                                   ImageHandle,
+                                   NULL,
+                                   EFI_OPEN_PROTOCOL_GET_PROTOCOL);
 
-        Print(L"Old Kernel Options: %r \n", LoadedImage->LoadOptions);
-        CHAR16 *kernelOptions = L"root=/dev/sda2 quiet fastboot";
-        Print(L"New Kernel Options: %r \n", kernelOptions);
-        LoadedImage->LoadOptionsSize = StrLen(kernelOptions);
-        memcpy(LoadedImage->LoadOptions, kernelOptions, LoadedImage->LoadOptionsSize);
-        Print(L"Kernel Options Set To: %r \n", LoadedImage->LoadOptions);
+        if (Status != EFI_SUCCESS)
+        {
+            Print(L"LoadImageInfo - %r\n", Status);
+            uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
 
-        uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(10));
+            continue;
+        }
+        Print(L"Found Image Info \n");
+
+        // LoadedImage->LoadOptionsSize = StrLen((CHAR16 *)LoadedImage->LoadOptions);
+        // struct _EFI_LOAD_OPTION *loadOptions = LoadedImage->LoadOptions;
+        // Print(L"Old Kernel Options: %r \n", loadOptions->OptionalData[2]);
+        // // Print(L"root=/dev/sda2 quiet fastboot");
+        // Print(L"New Kernel Options: %r \n", kernelOptions);
+        // LoadedImage->LoadOptionsSize = StrLen(kernelOptions);
+        // memcpy(&LoadedImage->LoadOptions, &kernelOptions, LoadedImage->LoadOptionsSize);
+        // Print(L"Kernel Options Set To: %r \n", LoadedImage->LoadOptions);
+
+        CHAR16 *kernelOptions = L"root=/dev/sda2 loglevel=1 quiet fastboot";
+        CHAR16 *BootOptions = L"";
+
+        StrCpy(BootOptions, LoadedImage->LoadOptions);
+        StrCat(BootOptions, kernelOptions);
+        LoadedImage->LoadOptions = BootOptions;
+        LoadedImage->LoadOptionsSize = StrLen(LoadedImage->LoadOptions);
+        // memcpy(&loadOptions->OptionalData, &kernelOptions, StrLen(kernelOptions));
+
+        // LoadedImage->LoadOptions[0]= &kernelOptions;
+        // EFI_SHELL_PARAMETERS_PROTOCOL *parametersProtocol; /* = {
+        //     .Argv =  &kernelOptions,
+        //     .Argc = StrLen(kernelOptions)};*/
+
+        // EFI_GUID efiShellParametersGUID = EFI_SHELL_PARAMETERS_PROTOCOL_GUID;
+
+        // Status = uefi_call_wrapper(BS->OpenProtocol, 3,
+        //                            LinuxImageHandle,
+        //                            &efiShellParametersGUID,
+        //                            &parametersProtocol,
+        //                            ImageHandle,
+        //                            NULL,
+        //                            EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+        // if (Status != EFI_SUCCESS)
+        // {
+        //     Print(L"Image Parameters - %r\n", Status);
+        //     uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
+
+        //     continue;
+        // }
+        // Print(L"Found Image Parameters");
+
+        uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
 
         if (Status != EFI_SUCCESS)
         {
@@ -126,120 +171,9 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
             continue;
         }
     }
-    // gBS->StartImage
-    // Status = uefi_call_wrapper(BS->LoadImage, 6, FALSE, &ImageHandle, L"fs0:\\vmlinuz", NULL, NULL, &LinuxImageHandle);
-    // // ExitBootServices();
-    // if (Status != EFI_SUCCESS)
-    // {
-    //     Print(L"Could not load the image - %r\n", Status);
-    //     uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
-    //     return Status;
-    // }
-    // // Status = uefi_call_wrapper(BS->ExitBootServices, 1, L"fs0:\\vmlinuz");
 
     Print((CHAR16 *)L"Es un pendejo amigos5!\n");
     // uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
     uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(10));
     return EFI_SUCCESS;
 }
-
-// #include <efi.h>
-// #include <efilib.h>
-
-// EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
-// {
-//     InitializeLib(ImageHandle, SystemTable);
-//     Print((CHAR16 *)L"Es un pendejo amigos5!\n");
-//     uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
-//     UINTN NumHandles;
-//     UINTN Index;
-//     EFI_HANDLE *SFS_Handles;
-//     EFI_HANDLE AppImageHandle = NULL;
-//     EFI_STATUS Status = EFI_SUCCESS;
-//     EFI_BLOCK_IO_PROTOCOL *BlkIo;
-//     CONST CHAR16 *FileName = L"vmlinuz";
-//     EFI_DEVICE_PATH_PROTOCOL *FilePath;
-//     EFI_LOADED_IMAGE_PROTOCOL *ImageInfo;
-//     UINTN ExitDataSize;
-
-//     Status = gBS->LocateHandleBuffer(
-//         ByProtocol,
-//         &gEfiSimpleFileSystemProtocolGuid,
-//         NULL,
-//         &NumHandles,
-//         &SFS_Handles);
-
-//     if (Status != EFI_SUCCESS)
-//     {
-//         Print(L"Could not find handles - %r\n", Status);
-//         uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
-
-//         return Status;
-//     }
-
-//     for (Index = 0; Index < NumHandles; Index++)
-//     {
-//         Status = gBS->OpenProtocol(
-//             SFS_Handles[Index],
-//             &gEfiSimpleFileSystemProtocolGuid,
-//             (VOID **)&BlkIo,
-//             ImageHandle,
-//             NULL,
-//             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-
-//         if (Status != EFI_SUCCESS)
-//         {
-//             Print(L"Protocol is not supported - %r\n", Status);
-//             uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
-
-//             return Status;
-//         }
-
-//         FilePath = FileDevicePath(SFS_Handles[Index], FileName);
-//         Status = gBS->LoadImage(
-//             FALSE,
-//             ImageHandle,
-//             FilePath,
-//             (VOID *)NULL,
-//             0,
-//             &AppImageHandle);
-
-//         if (Status != EFI_SUCCESS)
-//         {
-//             Print(L"Could not load the image - %r\n", Status);
-//             uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
-
-//             continue;
-//         }
-
-//         Print(L"Loaded the image with success\n");
-//         Status = gBS->OpenProtocol(
-//             AppImageHandle,
-//             &gEfiLoadedImageProtocolGuid,
-//             (VOID **)&ImageInfo,
-//             ImageHandle,
-//             (VOID *)NULL,
-//             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-
-//         Print(L"ImageInfo opened\n");
-
-//         if (!EFI_ERROR(Status))
-//         {
-//             Print(L"ImageSize = %d\n", ImageInfo->ImageSize);
-//             uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
-//         }
-
-//         Print(L"Image start:\n");
-//         Status = gBS->StartImage(AppImageHandle, &ExitDataSize, (CHAR16 **)NULL);
-//         if (Status != EFI_SUCCESS)
-//         {
-//             Print(L"Could not start the image - %r %x\n", Status, Status);
-//             Print(L"Exit data size: %d\n", ExitDataSize);
-//             uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
-
-//             continue;
-//         }
-//     }
-
-//     return Status;
-// }
