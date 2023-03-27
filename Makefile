@@ -1,12 +1,30 @@
 ARCH			= $(shell uname -m | sed s,i[3456789]86,ia32,)
+SRCDIR 			:= src
+OBJDIR 			:= obj
+INCLUDE_DIR		:= include
+SOURCE_DIRS		:= modules/config \
+				   utils
 
-OBJS			= main.o src/utils/encoding-utils.o
+OBJ_DIRS		:= $(patsubst %,$(OBJDIR)/%,$(SOURCE_DIRS))
+
+_OBJS			:= main.o \
+				  utils/encoding-utils.o \
+				  modules/config/config-loader.o
+
+OBJS = $(patsubst %,$(OBJDIR)/%,$(_OBJS))
+
+# INCLUDE_FILES	= encoding-utils.h \
+# 				  config-loader.h
+
+# DEPS			= $(patsubst %,$(INCLUDE_DIR)/%,$(INCLUDE_FILES))
+
 TARGET			= BootX64.efi
 
 EFIINC			= /usr/include/efi
 EFILIB			= /usr/lib
 EFI_CRT_OBJS	= $(EFILIB)/crt0-efi-$(ARCH).o
 EFI_LDS			= $(EFILIB)/elf_$(ARCH)_efi.lds
+
 
 CFLAGS			= -nostdlib \
 				  -fno-stack-protector \
@@ -23,7 +41,8 @@ endif
 
 CFLAGS			+= -I$(EFIINC) \
 				   -I$(EFIINC)/$(ARCH) \
-				   -I$(EFIINC)/protocol
+				   -I$(EFIINC)/protocol \
+				   -I$(INCLUDE_DIR)
 
 LDFLAGS			= -nostdlib \
 				  -znocombreloc \
@@ -48,18 +67,27 @@ OBJCOPYFLAGS	= -j .text \
 				  -j .reloc \
 				  --target=efi-app-$(ARCH)
 
-all: clean $(TARGET)
+# all: clean $(TARGET)
+all: create_build_dir BootX64.efi
 
-BootX64.so:   $(OBJS)
+$(OBJDIR)/%.o : $(SRCDIR)/%.c 
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+$(OBJDIR)/BootX64.so:   $(OBJS)
 	ld  $(LDFLAGS)  $(OBJS) -o  $@  $(LIBS) 
+	
 
-%.efi:  %.so
+%.efi:  $(OBJDIR)/%.so
 	objcopy $(OBJCOPYFLAGS) $^ $@
 
 .PHONY:    clean
 
 clean:
-	rm -f $(OBJS) $(TARGET) BootX64.so
+	rm -rf $(OBJDIR) $(TARGET) 
+
+create_build_dir:
+	rm -rfv obj
+	mkdir -pv $(OBJ_DIRS)
 
 install:
 	cp -v $(TARGET) /boot/EFI/Boot/

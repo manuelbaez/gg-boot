@@ -1,4 +1,4 @@
-#include "./encoding-utils.h"
+#include "encoding-utils.h"
 
 UINTN AsciiStrLen(IN CONST CHAR8 *String)
 {

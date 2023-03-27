@@ -1,7 +1,7 @@
 #include <efi.h>
 #include <efilib.h>
 #include <string.h>
-#include "src/utils/encoding-utils.h"
+#include "encoding-utils.h"
 
 #define SEC_TO_USEC(value) ((value)*1000 * 1000)
 
