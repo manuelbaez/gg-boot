@@ -5,7 +5,6 @@
 
 #define SEC_TO_USEC(value) ((value)*1000 * 1000)
 
-
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
 
@@ -79,7 +78,7 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     }
 #endif
     Print(L"Starting boot\n");
-    uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(1));
+    // uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(1));
 
     EFI_FILE_PROTOCOL *ConfigFileHandle;
     EFI_FILE_PROTOCOL *root;
@@ -139,14 +138,14 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
         uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(5));
         return Status;
     }
-    CHAR16 *KernelOptions = AllocatePool(BufferSize*2 + sizeof(CHAR16));
-    ConvertChar8ToChar16((CHAR8 *)Buffer, KernelOptions, BufferSize*2 + sizeof(CHAR16));
+    CHAR16 *KernelOptions = AllocatePool(BufferSize * 2 + sizeof(CHAR16));
+    ConvertChar8ToChar16((CHAR8 *)Buffer, KernelOptions, BufferSize * 2 + sizeof(CHAR16));
 
     Print(L"Kernel Params:\n");
     Print(KernelOptions);
 
     FreePool(Buffer);
-    ConfigFileHandle->Close(ConfigFileHandle);
+    uefi_call_wrapper(ConfigFileHandle->Close, 1, ConfigFileHandle);
     // Load the OS Image
     Print(L"Load Kernel Image\n");
 
@@ -208,7 +207,7 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     // Print(L"Options are: \n");
     // uefi_call_wrapper(ST->ConOut->OutputString, 2, ST->ConOut, LoadedImage->LoadOptions);
     // Print(L"\n");
-    Print(L"\nKernel will start in 5 seconds \n");
+    Print(L"\nKernel will start now \n");
     // uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(5));
     Status =
         uefi_call_wrapper(BS->CloseProtocol, 4,
