@@ -1,6 +1,6 @@
 ARCH			= $(shell uname -m | sed s,i[3456789]86,ia32,)
 
-OBJS			= main.o
+OBJS			= main.o src/utils/encoding-utils.o
 TARGET			= BootX64.efi
 
 EFIINC			= /usr/include/efi
@@ -48,7 +48,7 @@ OBJCOPYFLAGS	= -j .text \
 				  -j .reloc \
 				  --target=efi-app-$(ARCH)
 
-all: $(TARGET)
+all: clean $(TARGET)
 
 BootX64.so:   $(OBJS)
 	ld  $(LDFLAGS)  $(OBJS) -o  $@  $(LIBS) 
@@ -60,3 +60,6 @@ BootX64.so:   $(OBJS)
 
 clean:
 	rm -f $(OBJS) $(TARGET) BootX64.so
+
+install:
+	cp -v $(TARGET) /boot/EFI/Boot/

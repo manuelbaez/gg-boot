@@ -1,8 +1,11 @@
 #include <efi.h>
 #include <efilib.h>
 #include <string.h>
+#include "src/utils/encoding-utils.h"
 
 #define SEC_TO_USEC(value) ((value)*1000 * 1000)
+
+
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
 
@@ -30,20 +33,20 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
 
     // uefi_call_wrapper()
 
-    // CHAR16 *logo = L"   ______   "
-    //                "   ______   \n"
-    //                " /        \\"
-    //                " /        \\\n"
-    //                "|           "
-    //                "|           \n"
-    //                "|      ___  "
-    //                "|      ___  \n"
-    //                "|         | "
-    //                "|         | \n"
-    //                " \\_______/ "
-    //                " \\_______/ \n"
-    //                " Por pendejos \n"
-    //                " Para pendejos \n";
+    CHAR16 *logo = L"   ______   "
+                   "   ______   \n"
+                   " /        \\"
+                   " /        \\\n"
+                   "|           "
+                   "|           \n"
+                   "|      ___  "
+                   "|      ___  \n"
+                   "|         | "
+                   "|         | \n"
+                   " \\_______/ "
+                   " \\_______/ \n"
+                   " Por pendejos \n"
+                   " Para pendejos \n";
 
     EFI_HANDLE LinuxImageHandle;
     // UINTN NumHandles;
@@ -55,7 +58,7 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     UINTN ExitDataSize;
     EFI_LOADED_IMAGE *LoadedImage;
 
-    // Print((CHAR16 *)logo);
+    Print((CHAR16 *)logo);
 
     // Print(L"This isn't Done by iterating fs handles\n");
     Status =
@@ -75,60 +78,77 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
         return Status;
     }
 #endif
-    // Read the configuration file
+    Print(L"Starting boot\n");
+    uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(1));
 
-    // CHAR16 *kernelOptions = L"root=PARTUUID=0600a512-de71-6c4c-ad7c-d3326881bce6 rw quiet fastboot";
-    CHAR16 *kernelOptions = L"root=/dev/sda2 rw quiet fastboot";
-    // Print(L"Loading Config File\n");
+    EFI_FILE_PROTOCOL *ConfigFileHandle;
+    EFI_FILE_PROTOCOL *root;
+    EFI_FILE_INFO *FileInfo;
+    uefi_call_wrapper(RootFileSystemProtocol->OpenVolume, 2, RootFileSystemProtocol, &root);
+    Status = uefi_call_wrapper(root->Open, 5,
+                               root,
+                               &ConfigFileHandle,
+                               L"\\config",
+                               EFI_FILE_MODE_READ,
+                               0);
+    if (EFI_ERROR(Status))
+    {
+        Print(L"Failed to open the file. Status: %r\n", Status);
+        uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(5));
+        return Status;
+    }
+    UINTN BufferSize;
+    BufferSize = 0;
+    UINTN FileInfoSize;
+    Status = uefi_call_wrapper(ConfigFileHandle->GetInfo, 4, ConfigFileHandle, &gEfiFileInfoGuid, &FileInfoSize, NULL);
+    if (Status != EFI_BUFFER_TOO_SMALL)
+    {
+        Print(L"Failed to get the file size. Status: %r\n", Status);
+        return Status;
+    }
+    FileInfo = AllocatePool(FileInfoSize);
+    if (FileInfo == NULL)
+    {
+        Print(L"Failed to allocate memory for the file info.\n");
+        uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(5));
+        return EFI_OUT_OF_RESOURCES;
+    }
+    Status = uefi_call_wrapper(ConfigFileHandle->GetInfo, 4, ConfigFileHandle, &gEfiFileInfoGuid, &FileInfoSize, FileInfo);
+    if (EFI_ERROR(Status))
+    {
+        Print(L"Failed to get the file info. Status: %r\n", Status);
+        uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(5));
+        return Status;
+    }
+    BufferSize = FileInfo->FileSize;
+    Print(L"Buffer size: %d\n", BufferSize);
+    VOID *Buffer;
+    Buffer = AllocatePool(BufferSize);
+    if (Buffer == NULL)
+    {
+        Print(L"Failed to allocate memory for the file contents.\n");
+        uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(5));
+        return EFI_OUT_OF_RESOURCES;
+    }
+    Status = uefi_call_wrapper(ConfigFileHandle->Read, 3, ConfigFileHandle, &BufferSize, Buffer);
+    Print(L"Read file status: %r\n", Status);
 
-    // EFI_FILE_PROTOCOL *file;
-    // UINTN buffer_size = 0;
-    // CHAR16 *buffer = L"";
-    // EFI_FILE_PROTOCOL *root;
-    // EFI_FILE_INFO *fileInfo;
-    // uefi_call_wrapper(RootFileSystemProtocol->OpenVolume, 2, RootFileSystemProtocol, &root);
-    // // Open the file
-    // uefi_call_wrapper(root->Open, 5,
-    //                   root,
-    //                   &file,
-    //                   L"config",
-    //                   EFI_FILE_MODE_READ,
-    //                   EFI_FILE_READ_ONLY | EFI_FILE_HIDDEN | EFI_FILE_SYSTEM);
+    if (EFI_ERROR(Status))
+    {
+        Print(L"Failed to read the file contents. Status: %r\n", Status);
+        uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(5));
+        return Status;
+    }
+    CHAR16 *KernelOptions = AllocatePool(BufferSize*2 + sizeof(CHAR16));
+    ConvertChar8ToChar16((CHAR8 *)Buffer, KernelOptions, BufferSize*2 + sizeof(CHAR16));
 
-    // // Get the file size
-    // uefi_call_wrapper(file->GetInfo, 4, file, &gEfiFileInfoGuid, &buffer_size, NULL);
-    // fileInfo = AllocatePool(buffer_size);
+    Print(L"Kernel Params:\n");
+    Print(KernelOptions);
 
-    // uefi_call_wrapper(file->GetInfo, 4, file, &gEfiFileInfoGuid, &buffer_size, fileInfo);
-    // buffer = AllocatePool(fileInfo->FileSize);
-
-    // Print(L"Setting position to 0 \n");
-
-    // UINTN position = 0;
-    // // Read the file
-    // uefi_call_wrapper(file->SetPosition, 2, file, position);
-    // Print(L"Position Set To 0 \n");
-
-    // Status = uefi_call_wrapper(file->Read, 3, file, &fileInfo->FileSize, buffer);
-
-    // if (Status != EFI_SUCCESS)
-    // {
-    //     Print(L"Could not read file %r \n", fileInfo->FileSize);
-    // }
-
-    // Print(L"File size is:  %r \n", buffer_size);
-    // Print(L"Config is: \n");
-    // Print(L"Config is:  %r \n", buffer);
-    // uefi_call_wrapper(ST->ConOut->OutputString, 2, ST->ConOut, kernelOptions);
-    // Print(L"\n");
-    // uefi_call_wrapper(ST->ConOut->OutputString, 2, ST->ConOut, buffer);
-    // Print(L"\n");
-    // // kernelOptions = buffer;
-    // // Close the file
-    // uefi_call_wrapper(file->Close, 1, file);
-    // uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(4));
-
+    FreePool(Buffer);
+    ConfigFileHandle->Close(ConfigFileHandle);
     // Load the OS Image
+    Print(L"Load Kernel Image\n");
 
     FilePath = FileDevicePath(AppLoadedImage->DeviceHandle, KernelFileName);
     Status =
@@ -147,7 +167,7 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
         uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
     }
 #endif
-    // Print(L"Loaded the image with success\n");
+    Print(L"Loaded the image with success\n");
     // Print(L"Image start:\n");
     Status =
         uefi_call_wrapper(BS->OpenProtocol, 3,
@@ -165,17 +185,17 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     }
 #endif
 
-    // Print(L"Found Image Info \n");
+    Print(L"Found Image Info \n");
 
-    CHAR16 *BootOptions = AllocatePool((StrLen(LoadedImage->LoadOptions) + StrLen(kernelOptions)) * 2 + 1);
+    CHAR16 *BootOptions = AllocatePool((StrLen(LoadedImage->LoadOptions) + StrLen(KernelOptions)) * 2 + 1);
 
     StrCpy(BootOptions, LoadedImage->LoadOptions);
-    StrCat(BootOptions, kernelOptions);
+    StrCat(BootOptions, KernelOptions);
     LoadedImage->LoadOptions = BootOptions;
     LoadedImage->LoadOptionsSize = StrLen(LoadedImage->LoadOptions) * 2 + 1;
 
     // uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
-    // Print(L"Assigned boot options \n");
+    Print(L"Assigned boot options \n");
 #ifdef FAILSAFE_BUILD
     if (Status != EFI_SUCCESS)
     {
@@ -188,7 +208,7 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     // Print(L"Options are: \n");
     // uefi_call_wrapper(ST->ConOut->OutputString, 2, ST->ConOut, LoadedImage->LoadOptions);
     // Print(L"\n");
-    // Print(L"\nKernel will start in 5 seconds \n");
+    Print(L"\nKernel will start in 5 seconds \n");
     // uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(5));
     Status =
         uefi_call_wrapper(BS->CloseProtocol, 4,
@@ -221,7 +241,5 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
         uefi_call_wrapper(BS->Stall, 1, SEC_TO_USEC(2));
     }
 #endif
-
-    // Print((CHAR16 *)L"Es un pendejo amigos5!\n");
     return EFI_SUCCESS;
 }
