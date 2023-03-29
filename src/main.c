@@ -11,8 +11,7 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
 {
 
     InitializeLib(ImageHandle, SystemTable);
-    EFI_STATUS Status;
-
+    
     Print(L"Load app info\n");
     EFI_LOADED_IMAGE *AppLoadedImage = NULL;
     LoadAppInfo(ImageHandle, &AppLoadedImage);
