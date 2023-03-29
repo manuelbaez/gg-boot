@@ -1,22 +1,25 @@
-ARCH			= $(shell uname -m | sed s,i[3456789]86,ia32,)
+#!make
+include .config
+export $(shell sed 's/=.*//' .config)
+
+ARCH			:= $(shell uname -m | sed s,i[3456789]86,ia32,)
 SRCDIR 			:= src
 OBJDIR 			:= obj
 INCLUDE_DIR		:= include
 SOURCE_DIRS		:= modules/config \
+				   modules/boot \
 				   utils
 
 OBJ_DIRS		:= $(patsubst %,$(OBJDIR)/%,$(SOURCE_DIRS))
 
 _OBJS			:= main.o \
 				  utils/encoding-utils.o \
-				  modules/config/config-loader.o
+				  utils/app-tools.o \
+				  modules/config/config-loader.o \
+				  modules/boot/kernel-loader.o \
+				  modules/boot/boot-entries.o
 
 OBJS = $(patsubst %,$(OBJDIR)/%,$(_OBJS))
-
-# INCLUDE_FILES	= encoding-utils.h \
-# 				  config-loader.h
-
-# DEPS			= $(patsubst %,$(INCLUDE_DIR)/%,$(INCLUDE_FILES))
 
 TARGET			= BootX64.efi
 
@@ -67,7 +70,6 @@ OBJCOPYFLAGS	= -j .text \
 				  -j .reloc \
 				  --target=efi-app-$(ARCH)
 
-# all: clean $(TARGET)
 all: create_build_dir BootX64.efi
 
 $(OBJDIR)/%.o : $(SRCDIR)/%.c 
@@ -85,9 +87,9 @@ $(OBJDIR)/BootX64.so:   $(OBJS)
 clean:
 	rm -rf $(OBJDIR) $(TARGET) 
 
-create_build_dir:
-	rm -rfv obj
+create_build_dir: clean
 	mkdir -pv $(OBJ_DIRS)
 
 install:
-	cp -v $(TARGET) /boot/EFI/Boot/
+	cp -v $(TARGET) $(BOOT_DIR)/EFI/Boot/
+	echo $(KERNEL_PARAMS)> $(BOOT_DIR)/config
