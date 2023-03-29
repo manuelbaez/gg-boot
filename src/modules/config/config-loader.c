@@ -5,11 +5,11 @@ EFI_STATUS GetKernelParams(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *RootFileSystemProtoc
 {
 	EFI_FILE_PROTOCOL *ConfigFileHandle;
 	EFI_FILE_PROTOCOL *root;
-	EFI_FILE_INFO *FileInfo;
+	EFI_FILE_INFO *FileInfo = AllocatePool(1024);
 	EFI_STATUS Status;
 	Print(L"Open Boot Volume \n");
 	uefi_call_wrapper(RootFileSystemProtocol->OpenVolume, 2, RootFileSystemProtocol, &root);
-	Print(L"Open config file \n");
+	// Print(L"Open config file \n");
 	Status = uefi_call_wrapper(root->Open, 5,
 							   root,
 							   &ConfigFileHandle,
@@ -26,8 +26,8 @@ EFI_STATUS GetKernelParams(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *RootFileSystemProtoc
 	BufferSize = 0;
 	UINTN FileInfoSize;
 	Print(L"Get config file info \n");
-	Status = uefi_call_wrapper(ConfigFileHandle->GetInfo, 4, ConfigFileHandle, &gEfiFileInfoGuid, &FileInfoSize, NULL);
-
+	Status = uefi_call_wrapper(ConfigFileHandle->GetInfo, 4, ConfigFileHandle, &gEfiFileInfoGuid, &FileInfoSize, FileInfo);
+	FreePool(FileInfo);
 	FileInfo = AllocatePool(FileInfoSize);
 	if (FileInfo == NULL)
 	{
@@ -68,5 +68,6 @@ EFI_STATUS GetKernelParams(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *RootFileSystemProtoc
 	FreePool(Buffer);
 	FreePool(FileInfo);
 	uefi_call_wrapper(ConfigFileHandle->Close, 1, ConfigFileHandle);
+	uefi_call_wrapper(root->Close, 1, root);
 	return EFI_SUCCESS;
 }

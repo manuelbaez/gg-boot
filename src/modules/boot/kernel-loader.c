@@ -16,7 +16,7 @@ EFI_STATUS StartKernelImage(EFI_HANDLE ImageHandle, EFI_LOADED_IMAGE *AppLoadedI
 	Print(L"Load Kernel Image\n");
 
 	FilePath = FileDevicePath(AppLoadedImage->DeviceHandle, KernelFileName);
-	SetBootEntries(FilePath, L"Linux La Pipa", KernelOptions);
+	SetBootEntries(FilePath, L"Linux", KernelOptions);
 	Status =
 		uefi_call_wrapper(BS->LoadImage,
 						  6,
