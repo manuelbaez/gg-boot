@@ -1,12 +1,33 @@
-ARCH			= $(shell uname -m | sed s,i[3456789]86,ia32,)
+#!make
+include .config
+export $(shell sed 's/=.*//' .config)
 
-OBJS			= main.o
+ARCH			:= $(shell uname -m | sed s,i[3456789]86,ia32,)
+SRCDIR 			:= src
+OBJDIR 			:= obj
+INCLUDE_DIR		:= include
+SOURCE_DIRS		:= modules/config \
+				   modules/boot \
+				   utils
+
+OBJ_DIRS		:= $(patsubst %,$(OBJDIR)/%,$(SOURCE_DIRS))
+
+_OBJS			:= main.o \
+				  utils/encoding-utils.o \
+				  utils/app-tools.o \
+				  modules/config/config-loader.o \
+				  modules/boot/kernel-loader.o \
+				  modules/boot/boot-entries.o
+
+OBJS = $(patsubst %,$(OBJDIR)/%,$(_OBJS))
+
 TARGET			= BootX64.efi
 
 EFIINC			= /usr/include/efi
 EFILIB			= /usr/lib
 EFI_CRT_OBJS	= $(EFILIB)/crt0-efi-$(ARCH).o
 EFI_LDS			= $(EFILIB)/elf_$(ARCH)_efi.lds
+
 
 CFLAGS			= -nostdlib \
 				  -fno-stack-protector \
@@ -15,7 +36,7 @@ CFLAGS			= -nostdlib \
 				  -fpic \
 				  -fshort-wchar \
 				  -mno-red-zone \
-				  -Wall
+				  -Wall 
 
 ifeq ($(ARCH),x86_64)
   CFLAGS		+= -DEFI_FUNCTION_WRAPPER
@@ -23,7 +44,20 @@ endif
 
 CFLAGS			+= -I$(EFIINC) \
 				   -I$(EFIINC)/$(ARCH) \
-				   -I$(EFIINC)/protocol
+				   -I$(EFIINC)/protocol \
+				   -I$(INCLUDE_DIR)
+
+ifeq ($(NO_ERROR_CHECK),1)
+	CFLAGS += -D NO_ERROR_CHECK
+endif
+
+ifeq ($(NO_BOOT_ENTRIES),1)
+	CFLAGS += -D NO_BOOT_ENTRIES
+endif
+
+ifeq ($(SILENT),1)
+	CFLAGS += -D SILENT
+endif
 
 LDFLAGS			= -nostdlib \
 				  -znocombreloc \
@@ -48,15 +82,26 @@ OBJCOPYFLAGS	= -j .text \
 				  -j .reloc \
 				  --target=efi-app-$(ARCH)
 
-all: $(TARGET)
+all: create_build_dir BootX64.efi
 
-BootX64.so:   $(OBJS)
+$(OBJDIR)/%.o : $(SRCDIR)/%.c 
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+$(OBJDIR)/BootX64.so:   $(OBJS)
 	ld  $(LDFLAGS)  $(OBJS) -o  $@  $(LIBS) 
+	
 
-%.efi:  %.so
+%.efi:  $(OBJDIR)/%.so
 	objcopy $(OBJCOPYFLAGS) $^ $@
 
 .PHONY:    clean
 
 clean:
-	rm -f $(OBJS) $(TARGET) BootX64.so
+	rm -rf $(OBJDIR) $(TARGET) 
+
+create_build_dir: clean
+	mkdir -pv $(OBJ_DIRS)
+
+install:
+	cp -v $(TARGET) $(BOOT_DIR)/EFI/Boot/
+	echo $(KERNEL_PARAMS)> $(BOOT_DIR)/config
