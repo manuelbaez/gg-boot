@@ -62,7 +62,7 @@ EFI_STATUS GetKernelParams(EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *RootFileSystemProtoc
 		return Status;
 	}
 
-	*KernelOptions = AllocatePool(BufferSize * 2);
+	*KernelOptions = AllocatePool(BufferSize * 2 + sizeof(CHAR16));
 	ConvertChar8ToChar16((CHAR8 *)Buffer, *KernelOptions, BufferSize * 2);
 
 	FreePool(Buffer);

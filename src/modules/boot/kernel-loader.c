@@ -16,7 +16,11 @@ EFI_STATUS StartKernelImage(EFI_HANDLE ImageHandle, EFI_LOADED_IMAGE *AppLoadedI
 	Print(L"Load Kernel Image\n");
 
 	FilePath = FileDevicePath(AppLoadedImage->DeviceHandle, KernelFileName);
-	SetBootEntries(FilePath, L"Linux", KernelOptions);
+	Status = SetBootEntries(FilePath, L"Linux", KernelOptions);
+	if (Status != EFI_SUCCESS)
+	{
+		Print(L"Could not Add boot Entry - %r\n", Status);
+	}
 	Status =
 		uefi_call_wrapper(BS->LoadImage,
 						  6,
