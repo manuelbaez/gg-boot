@@ -36,7 +36,7 @@ CFLAGS			= -nostdlib \
 				  -fpic \
 				  -fshort-wchar \
 				  -mno-red-zone \
-				  -Wall
+				  -Wall 
 
 ifeq ($(ARCH),x86_64)
   CFLAGS		+= -DEFI_FUNCTION_WRAPPER
@@ -46,6 +46,18 @@ CFLAGS			+= -I$(EFIINC) \
 				   -I$(EFIINC)/$(ARCH) \
 				   -I$(EFIINC)/protocol \
 				   -I$(INCLUDE_DIR)
+
+ifeq ($(NO_ERROR_CHECK),1)
+	CFLAGS += -D NO_ERROR_CHECK
+endif
+
+ifeq ($(NO_BOOT_ENTRIES),1)
+	CFLAGS += -D NO_BOOT_ENTRIES
+endif
+
+ifeq ($(SILENT),1)
+	CFLAGS += -D SILENT
+endif
 
 LDFLAGS			= -nostdlib \
 				  -znocombreloc \
