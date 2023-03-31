@@ -3,17 +3,14 @@
 #include "encoding-utils.h"
 
 #ifndef KERNEL_IMAGE_PATH
-#define KERNEL_IMAGE_PATH (CHAR8 *)""
+#define KERNEL_IMAGE_PATH L""
 #endif
 
 EFI_STATUS StartKernelImage(EFI_HANDLE ImageHandle, EFI_LOADED_IMAGE *AppLoadedImage, CHAR16 *KernelOptions)
 {
 	EFI_STATUS Status;
 	EFI_HANDLE LinuxImageHandle;
-	UINT16 KernelPathSize = AsciiStrLen(KERNEL_IMAGE_PATH);
-	CHAR16 *KernelFileName = AllocatePool(KernelPathSize * 2 + sizeof(CHAR16));
-	ConvertChar8ToChar16((CHAR8 *)KERNEL_IMAGE_PATH, KernelFileName, KernelPathSize * 2);
-
+	CHAR16 *KernelFileName = KERNEL_IMAGE_PATH;
 	EFI_DEVICE_PATH_PROTOCOL *FilePath;
 	UINTN ExitDataSize;
 	EFI_LOADED_IMAGE *LoadedImage;
