@@ -1,11 +1,19 @@
 #include "boot.h"
 #include "constants.h"
+#include "encoding-utils.h"
+
+#ifndef KERNEL_IMAGE_PATH
+#define KERNEL_IMAGE_PATH (CHAR8 *)""
+#endif
 
 EFI_STATUS StartKernelImage(EFI_HANDLE ImageHandle, EFI_LOADED_IMAGE *AppLoadedImage, CHAR16 *KernelOptions)
 {
 	EFI_STATUS Status;
 	EFI_HANDLE LinuxImageHandle;
-	CHAR16 *KernelFileName = L"vmlinuz";
+	UINT16 KernelPathSize = AsciiStrLen(KERNEL_IMAGE_PATH);
+	CHAR16 *KernelFileName = AllocatePool(KernelPathSize * 2 + sizeof(CHAR16));
+	ConvertChar8ToChar16((CHAR8 *)KERNEL_IMAGE_PATH, KernelFileName, KernelPathSize * 2);
+
 	EFI_DEVICE_PATH_PROTOCOL *FilePath;
 	UINTN ExitDataSize;
 	EFI_LOADED_IMAGE *LoadedImage;
