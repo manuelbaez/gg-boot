@@ -45,7 +45,7 @@ endif
 CFLAGS			+= -I$(EFIINC) \
 				   -I$(EFIINC)/$(ARCH) \
 				   -I$(EFIINC)/protocol \
-				   -I$(INCLUDE_DIR)
+				   -I$(INCLUDE_DIR) 
 
 ifeq ($(NO_ERROR_CHECK),1)
 	CFLAGS += -D NO_ERROR_CHECK
@@ -58,6 +58,11 @@ endif
 ifeq ($(SILENT),1)
 	CFLAGS += -D SILENT
 endif
+
+ifdef KERNEL_IMAGE_PATH
+	CFLAGS += -D KERNEL_IMAGE_PATH="(CHAR8*)\"$(KERNEL_IMAGE_PATH)\""
+endif
+
 
 LDFLAGS			= -nostdlib \
 				  -znocombreloc \
@@ -103,5 +108,6 @@ create_build_dir: clean
 	mkdir -pv $(OBJ_DIRS)
 
 install:
+	mkdir -pv $(BOOT_DIR)/EFI/Boot/
 	cp -v $(TARGET) $(BOOT_DIR)/EFI/Boot/
 	echo $(KERNEL_PARAMS)> $(BOOT_DIR)/config
